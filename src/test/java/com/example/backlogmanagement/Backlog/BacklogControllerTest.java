@@ -1,4 +1,4 @@
-package com.example.backlogmanagement.Backlog;
+wpackage com.example.backlogmanagement.Backlog;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -92,7 +92,115 @@ public class BacklogControllerTest {
       		 
   }
   
+////Zweisung einer UserStory einem Sprint mit falschen Daten
+@Test
+@WithMockUser(username="productOwner", roles={"PRODUCT_OWNER"})
 
+public void assignUserStoryToSprint_InvalidData_ThrowsBadRequest() throws Exception {
+    Map<String, String> invalidSprintData = new HashMap<>();
+    invalidSprintData.put("sprintId", "ungültig"); // Ungültiger Wert für sprintId
+
+    mockMvc.perform(patch("/backlog/1/sprint")
+            .contentType("application/json")
+            .content(new ObjectMapper().writeValueAsString(invalidSprintData)))
+            .andExpect(status().isBadRequest())
+            .andDo(print());// Druckt die gesamte Antwort zur Überprüfung;;
+}
+//
+////Zuweisung einer UserStory einem ProductBacklog mit richtigen Daten
+@Test
+@WithMockUser(username = "productOwner", roles = "PRODUCT_OWNER")
+public void assignUserStoriesToProductBacklog_withValidData_returnsOk() throws Exception {
+    List<Long> userStoryIds = List.of(2L, 3L);
+
+    mockMvc.perform(put("/backlog/productbacklog/{productBacklogId}", 4L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(userStoryIds)))
+            .andExpect(status().isOk())
+            .andDo(print());// Druckt die gesamte Antwort zur Überprüfung;
+
+    verify(backlogService, times(1)).assignUserStoriesToProductBacklog(eq(4L), anyList());
+}
+//
+////Erstellen eines ProductBacklogs mit richtigen Daten
+@Test
+@WithMockUser(username = "productOwner", roles = "PRODUCT_OWNER")
+public void createProductBacklog_withValidData_returnsProductBacklog() throws Exception {
+    ProductBacklog mockProductBacklog = new ProductBacklog();
+    mockProductBacklog.setId(11L);
+    mockProductBacklog.setName("Unitest erstellen");
+
+    CreateProductBacklogRequest request = new CreateProductBacklogRequest();
+    request.setName(mockProductBacklog.getName());
+    request.setUserStoryIds(List.of(1L, 2L));
+
+    given(backlogService.createProductBacklog(anyString(), anyList())).willReturn(mockProductBacklog);
+
+    mockMvc.perform(post("/backlog/productbacklog")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(mockProductBacklog.getId()))
+            .andExpect(jsonPath("$.name").value(mockProductBacklog.getName()))
+            .andDo(print());// Druckt die gesamte Antwort zur Überprüfung;;
+}
+//
+//// Erstellen eines Userstory
+@Test
+@WithMockUser(username = "productOwner", roles = "PRODUCT_OWNER")
+public void addUserStory_withValidData_returnsUserStory() throws Exception {
+    UserStory mockUserStory = new UserStory();
+    mockUserStory.setId(1L);
+    mockUserStory.setTitle("Unitest Testfälle");
+    mockUserStory.setDescription("Unitest Testfälle laufen lassen");
+    mockUserStory.setAcceptanceCriteria("Muss funktionieren");
+    mockUserStory.setPriority(5);
+
+    given(backlogService.addUserStory(any(UserStory.class))).willReturn(mockUserStory);
+
+    mockMvc.perform(post("/backlog")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mockUserStory)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(mockUserStory.getId()))
+            .andExpect(jsonPath("$.title").value(mockUserStory.getTitle()))
+            .andExpect(jsonPath("$.description").value(mockUserStory.getDescription()))
+            .andExpect(jsonPath("$.acceptanceCriteria").value(mockUserStory.getAcceptanceCriteria()))
+            .andExpect(jsonPath("$.priority").value(mockUserStory.getPriority()))
+            .andDo(print());
+}
+//
+//	//Update Userstory
+	@Test
+	    @WithMockUser(username = "productOwner", roles = "PRODUCT_OWNER")
+	    public void updateUserStory_withValidData_returnsUpdatedUserStory() throws Exception {
+	        UserStory updatedUserStory = new UserStory();
+	        updatedUserStory.setId(4L);
+	        updatedUserStory.setTitle("Aktualisierte User Story");
+	
+	        given(backlogService.updateUserStory(eq(4L), any(UserStory.class))).willReturn(updatedUserStory);
+	
+	        mockMvc.perform(put("/backlog/{id}", 4L)
+	                .contentType(MediaType.APPLICATION_JSON)
+	                .content(objectMapper.writeValueAsString(updatedUserStory)))
+	                .andExpect(status().isOk())
+	                .andExpect(jsonPath("$.title").value(updatedUserStory.getTitle()))
+	                .andDo(print());
+	    }
+
+//	//Userstory löschen
+	@Test
+	@WithMockUser(username = "productOwner", roles = "PRODUCT_OWNER")
+	public void deleteUserStory_withValidId_performsDeletion() throws Exception {
+	    doNothing().when(backlogService).deleteUserStory(anyLong());
+
+	    mockMvc.perform(delete("/backlog/{id}", 4L)
+	            .contentType(MediaType.APPLICATION_JSON))
+	            .andExpect(status().isOk())
+	            .andDo(print());
+
+	    verify(backlogService, times(1)).deleteUserStory(eq(4L));
+	}
 
 
 
