@@ -87,7 +87,31 @@ public class BacklogService {
 			}
             
     }  
-        
+      //Asychrone Kommunikation mit Kafka
+        @Autowired
+        private KafkaTemplate<String, String> kafkaTemplate;
+
+        public UserStory assignUserStoryToSprint1(Long userStoryId, Long sprintId) {
+            UserStory userStory = findUserStoryById(userStoryId);
+            userStory.setSprintId(sprintId);
+            UserStory updatedUserStory = userStoryRepository.save(userStory);
+
+            // Senden der Nachricht
+            String message = createAssignmentMessage(userStory);
+            kafkaTemplate.send("userStoryToSprintAssignmentTopic", message);
+
+
+            return updatedUserStory;
+        }
+
+        private String createAssignmentMessage1(UserStory userStory) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                return mapper.writeValueAsString(new UserStoryAssignment(userStory.getId(), userStory.getSprintId()));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Error creating assignment message", e);
+            }
+        } 
         // Methode zum Erstellen eines neuen ProductBacklogs und Hinzufügen von User Stories
         public ProductBacklog createProductBacklog(String name, List<Long> userStoryIds) {
             ProductBacklog productBacklog = new ProductBacklog();
